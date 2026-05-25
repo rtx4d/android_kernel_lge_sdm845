@@ -2623,9 +2623,19 @@ static int process_new_server_msg(struct msm_ipc_router_xprt_info *xprt_info,
 	struct msm_ipc_router_remote_port *rport_ptr;
 
 	if (msg->srv.instance == 0) {
-		IPC_RTR_ERR("%s: Server %08x create rejected, version = 0\n",
+		/*
+		 * LGE modem firmware registers IMSA (0x1002) and IMSC
+		 * (0x1003) with instance=0. Without these QMI servers,
+		 * imsdatadaemon and qcrild cannot bring up the IMS PDN
+		 * Allow exactly these two through; reject the rest as before.
+		 */
+		if (msg->srv.service != 0x1002 && msg->srv.service != 0x1003) {
+			IPC_RTR_ERR("%s: Server %08x create rejected, version = 0\n",
+				    __func__, msg->srv.service);
+			return -EINVAL;
+		}
+		IPC_RTR_ERR("%s: Server %08x instance=0 allowed (LG IMS workaround)\n",
 			    __func__, msg->srv.service);
-		return -EINVAL;
 	}
 
 	rt_entry = ipc_router_get_rtentry_ref(msg->srv.node_id);
